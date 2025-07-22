@@ -1,8 +1,8 @@
 {
   "name": "universal-proxy-server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Universal HTTP proxy server with CORS support",
+  "main": "dist/proxy.js",
   "scripts": {
     "build": "tsc",
     "dev": "ts-node-dev src/proxy.ts",
@@ -14,8 +14,8 @@
     "test": "jest --coverage"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "LV",
+  "license": "MIT",
   "packageManager": "pnpm@10.13.1",
   "dependencies": {
     "dotenv": "^17.2.0",

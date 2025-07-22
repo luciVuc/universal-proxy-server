@@ -1,14 +1,14 @@
-// eslint.config.js
-import '@eslint/js';
+import { defineConfig } from "eslint/config";
+import js from '@eslint/js';
 import tseslint from '@typescript-eslint/eslint-plugin';
 import tsparser from '@typescript-eslint/parser';
 import prettier from 'eslint-config-prettier';
 import eslintPluginPrettier from 'eslint-plugin-prettier';
 
-export default [
+export default defineConfig([
   // TypeScript config (for .ts and .tsx files)
   {
-    files: ['src/**/*.ts', 'src/**/*.tsx'],
+    files: ["**/*.js", 'src/**/*.ts', 'src/**/*.tsx'],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -18,9 +18,11 @@ export default [
       },
     },
     plugins: {
+      js,
       '@typescript-eslint': tseslint,
       prettier: eslintPluginPrettier,
     },
+    extends: ["js/recommended"],
     rules: {
       ...tseslint.configs.recommended.rules,
       ...tseslint.configs['recommended-type-checked'].rules,
@@ -46,4 +48,10 @@ export default [
       '**/src/**/*.test.{js,ts}'
     ],
   },
-];
+  {
+		rules: {
+			'no-unused-vars': 'warn',
+			'no-undef': 'warn',
+		},
+	}
+]);
