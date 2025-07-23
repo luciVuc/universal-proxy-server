@@ -1,18 +1,23 @@
 {
   "name": "universal-proxy-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Universal HTTP proxy server with CORS support",
-  "main": "dist/proxy.js",
+  "main": "dist/index.js",
+  "bin": {
+    "universal-proxy-server": "dist/cli.js"
+  },
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node-dev src/proxy.ts",
+    "dev": "ts-node-dev src/index.ts",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --fix",
     "format": "prettier --check \"src/**/*.{ts,js,json,md}\"",
     "format:fix": "prettier --write \"src/**/*.{ts,js,json,md}\"",
-    "start": "node dist/proxy.js",
-    "test": "jest --coverage",
-    "prepublish": "pnpm build"
+    "start": "node .",
+    "test": "jest --coverage --forceExit",
+    "prepublish": "pnpm build",
+    "prestart": "pnpm build",
+    "postinstall": "pnpm build"
   },
   "keywords": [],
   "author": "LV",
@@ -32,7 +37,7 @@
     "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.37.0",
-    "eslint": "^9.31.0",
+    "eslint": ">=7.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.3",
     "jest": "^30.0.4",

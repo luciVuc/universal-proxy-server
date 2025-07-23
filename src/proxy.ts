@@ -9,7 +9,7 @@
  *   - Sets permissive CORS headers for all responses.
  *   - Handles CORS preflight (OPTIONS) for browser compatibility.
  *
- * @version 1.0.1
+ * @version 1.0.2
  * @author  LV
  * @license MIT
  *
@@ -37,117 +37,122 @@ const fetch = async (...args: Parameters<(typeof import('node-fetch'))['default'
 
 dotenv.config();
 
-const PORT: number = Number(process.env.PROXY_PORT) || 8080;
+export const main = () => {
+  const PORT: number = Number(process.env.PROXY_PORT) || 8080;
+  const app = express();
 
-const app = express();
+  app.use(express.json());
 
-app.use(express.json());
-
-/**
- * Universal Proxy Endpoint
- *
- * Proxies HTTP requests to a remote URL provided by the `url` query parameter.
- *
- * - Accepts all HTTP methods.
- * - Forwards headers (except for the 'host' header).
- * - Sends body as JSON for POST, PUT, PATCH.
- * - Streams target server response back to the client.
- * - Adds permissive CORS headers.
- *
- * @route ALL /proxy
- * @queryparam {string} url - The remote URL to proxy to. (required)
- * @returns
- *   - `200`-`299`, proxied response
- *   - `400`, if `url` parameter is missing
- *   - `500`, if proxying fails
- *
- * @example
- *   GET /proxy?url=https://api.example.com/data
- */
-app.use('/proxy', async (req: Request, res: Response) => {
-  const targetUrl = req.query.url as string | undefined;
-  if (!targetUrl) {
-    res.status(400).send('Missing url query parameter.');
-    return;
-  }
-
-  try {
-    // Prepare fetch options
-    const fetchOptions: RequestInit = {
-      method: req.method,
-      headers: { ...req.headers } as Record<string, string>,
-      redirect: 'follow',
-    };
-    // Remove the 'host' header, as it should not be forwarded
-    delete (fetchOptions.headers as Record<string, unknown>)['host'];
-
-    // For applicable methods, send JSON body
-    if (['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase())) {
-      fetchOptions.body = JSON.stringify(req.body);
-      (fetchOptions.headers as Record<string, string>)['content-type'] = 'application/json';
+  /**
+   * CORS Preflight Handler for Proxy
+   *
+   * Responds to CORS preflight (OPTIONS) requests at /proxy with the correct headers.
+   *
+   * @route OPTIONS /proxy
+   * @returns
+   *   - `204 No Content` with relevant CORS headers
+   *   - `400`, if `url` parameter is missing
+   */
+  app.options('/proxy', (req: Request, res: Response) => {
+    const targetUrl = req.query.url as string | undefined;
+    if (!targetUrl) {
+      res.status(400).send('Missing url query parameter.');
+      return;
     }
 
-    // Proxy request
-    const proxyRes = await fetch(targetUrl, fetchOptions);
-
-    // Set permissive CORS headers for browser support
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', '*');
     res.setHeader('Access-Control-Allow-Methods', '*');
+    res.sendStatus(204);
+  });
 
-    // Forward nearly all response headers, skip CORS headers (set above)
-    proxyRes.headers.forEach((value, name) => {
-      if (
-        ![
-          'access-control-allow-origin',
-          'access-control-allow-headers',
-          'access-control-allow-methods',
-        ].includes(name.toLowerCase())
-      ) {
-        res.setHeader(name, value);
-      }
-    });
-
-    // HTTP status and streamed body
-    res.status(proxyRes.status);
-    if (proxyRes.body) {
-      // Node-fetch v3: body is a readable stream (Web/Node compatible)
-      // @ts-ignore
-      proxyRes.body.pipe(res);
-    } else {
-      res.end();
+  /**
+   * Universal Proxy Endpoint
+   *
+   * Proxies HTTP requests to a remote URL provided by the `url` query parameter.
+   *
+   * - Accepts all HTTP methods.
+   * - Forwards headers (except for the 'host' header).
+   * - Sends body as JSON for POST, PUT, PATCH.
+   * - Streams target server response back to the client.
+   * - Adds permissive CORS headers.
+   *
+   * @route ALL /proxy
+   * @queryparam {string} url - The remote URL to proxy to. (required)
+   * @returns
+   *   - `200`-`299`, proxied response
+   *   - `400`, if `url` parameter is missing
+   *   - `500`, if proxying fails
+   *
+   * @example
+   *   GET /proxy?url=https://api.example.com/data
+   */
+  app.use('/proxy', async (req: Request, res: Response) => {
+    const targetUrl = req.query.url as string | undefined;
+    if (!targetUrl) {
+      res.status(400).send('Missing url query parameter.');
+      return;
     }
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Unknown proxy error';
-    res.status(500).send('Proxy error: ' + message);
-  }
-});
 
-/**
- * CORS Preflight Handler for Proxy
- *
- * Responds to CORS preflight (OPTIONS) requests at /proxy with the correct headers.
- *
- * @route OPTIONS /proxy
- * @returns
- *   - `204 No Content` with relevant CORS headers
- */
-app.options('/proxy', (req: Request, res: Response) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', '*');
-  res.setHeader('Access-Control-Allow-Methods', '*');
-  res.sendStatus(204);
-});
+    try {
+      // Prepare fetch options
+      const fetchOptions: RequestInit = {
+        method: req.method,
+        headers: { ...req.headers } as Record<string, string>,
+        redirect: 'follow',
+      };
+      // Remove the 'host' header, as it should not be forwarded
+      delete (fetchOptions.headers as Record<string, unknown>)['host'];
 
-/**
- * Starts the Express HTTP server.
- *
- * @function
- * @param {number} PORT - Port number to listen on.
- * @listens http://localhost:PORT/proxy
- * @returns {void}
- */
-if (require.main === module) {
+      // For applicable methods, send JSON body
+      if (['POST', 'PUT', 'PATCH'].includes(req.method.toUpperCase())) {
+        fetchOptions.body = JSON.stringify(req.body);
+        (fetchOptions.headers as Record<string, string>)['content-type'] = 'application/json';
+      }
+
+      // Proxy request
+      const proxyRes = await fetch(targetUrl, fetchOptions);
+
+      // Set permissive CORS headers for browser support
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', '*');
+      res.setHeader('Access-Control-Allow-Methods', '*');
+
+      // Forward nearly all response headers, skip CORS headers (set above)
+      proxyRes.headers.forEach((value, name) => {
+        if (
+          ![
+            'access-control-allow-origin',
+            'access-control-allow-headers',
+            'access-control-allow-methods',
+          ].includes(name.toLowerCase())
+        ) {
+          res.setHeader(name, value);
+        }
+      });
+
+      // HTTP status and streamed body
+      res.status(proxyRes.status);
+      if (proxyRes.body) {
+        // Node-fetch v3: body is a readable stream (Web/Node compatible)
+        proxyRes.body.pipe(res);
+      } else {
+        res.end();
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown proxy error';
+      res.status(500).send('Proxy error: ' + message);
+    }
+  });
+
+  /**
+   * Starts the Express HTTP server.
+   *
+   * @function
+   * @param {number} PORT - Port number to listen on.
+   * @listens http://localhost:PORT/proxy
+   * @returns {void}
+   */
   app.listen(PORT, (error?: Error) => {
     if (error) {
       console.error(error.message);
@@ -155,6 +160,8 @@ if (require.main === module) {
       console.log(`Proxy server running at http://localhost:${PORT}/proxy?url=<target>`);
     }
   });
-}
 
-export default app;
+  return app;
+};
+
+export default main;

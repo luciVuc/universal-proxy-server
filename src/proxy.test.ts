@@ -1,31 +1,20 @@
+// Helper for next test, simulates a readable body for node-fetch
+import { Readable } from 'stream';
 import request from 'supertest';
-import express from 'express';
-import http from 'http';
+import fetch from 'node-fetch';
+import '../src/proxy'; // This should create and listen to the server
+import main from './proxy'; // <-- Use this if you provide it
 
 // Mock node-fetch using jest (works for dynamic import as well)
 jest.mock('node-fetch', () => {
   return jest.fn();
 });
-import fetch from 'node-fetch';
-const mockedFetch = fetch as jest.MockedFunction<any>;
-
-// We need to import your app with its routes, so refactor `app` export in proxy.ts if necessary
-import '../src/proxy'; // This should create and listen to the server
-
-// To isolate the app for testing, it’s better if you refactor your server to export `app` and not call listen in the file!
-// For now, let's assume you expose app for test like: export default app;
-
-// Example re-export pattern in src/proxy.ts:
-//   export const server = app.listen(PORT, ...);
-//   export default app;
-
-import app from './proxy'; // <-- Use this if you provide it
-
-// Helper for next test, simulates a readable body for node-fetch
-import { Readable } from 'stream';
 
 // Silence server logs during test runs
 jest.spyOn(console, 'log').mockImplementation(() => {});
+
+const app = main();
+const mockedFetch = fetch as jest.MockedFunction<any>;
 
 describe('Universal Proxy Endpoint', () => {
   beforeEach(() => {
@@ -38,6 +27,23 @@ describe('Universal Proxy Endpoint', () => {
     const res = await request(app).get('/proxy');
     expect(res.status).toBe(400);
     expect(res.text).toMatch(/missing/i);
+  });
+
+  it('handles CORS preflight OPTIONS', async () => {
+    // Mock fetch for the success case
+    mockedFetch.mockResolvedValue({
+      status: 204,
+      headers: new Map<string, string>([['x-proxy-test', '42']]),
+    });
+
+    let res = await request(app).options('/proxy');
+    expect(res.status).toBe(400);
+
+    res = await request(app).options('/proxy?url=https://example.com');
+    expect(res.status).toBe(204);
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['access-control-allow-headers']).toBe('*');
+    expect(res.headers['access-control-allow-methods']).toBe('*');
   });
 
   it('handles CORS on all requests', async () => {
@@ -58,21 +64,46 @@ describe('Universal Proxy Endpoint', () => {
     expect(res.text).toBe('hello');
   });
 
-  it('handles CORS preflight OPTIONS', async () => {
+  it('handles CORS on requests with existing CORS headers', async () => {
     // Mock fetch for the success case
     mockedFetch.mockResolvedValue({
-      status: 204,
-      headers: new Map<string, string>([['x-proxy-test', '42']]),
+      status: 200,
+      headers: new Map<string, string>([
+        ['x-proxy-test', '42'],
+        ['access-control-allow-origin', 'abc'],
+        ['access-control-allow-methods', 'xyz'],
+      ]),
+      body: Readable.from(['hello']),
+      // .pipe() will be called on body
     });
 
-    let res = await request(app).options('/proxy');
-    expect(res.status).toBe(400);
+    const res = await request(app).get('/proxy?url=https://example.com');
 
-    res = await request(app).options('/proxy?url=https://example.com');
-    expect(res.status).toBe(204);
     expect(res.headers['access-control-allow-origin']).toBe('*');
     expect(res.headers['access-control-allow-headers']).toBe('*');
     expect(res.headers['access-control-allow-methods']).toBe('*');
+    expect(res.headers['x-proxy-test']).toBe('42');
+    expect(res.text).toBe('hello');
+  });
+
+  it('handles proxy response with no body', async () => {
+    const testBody = { foo: 'bar' };
+    let capturedBody = '';
+    // Simulate remote server responding
+    mockedFetch.mockImplementation(async (url: string, opts: { [key: string]: any }) => {
+      capturedBody = opts.body;
+      return {
+        status: 201,
+        headers: new Map<string, string>(),
+      };
+    });
+    const res = await request(app)
+      .post('/proxy?url=https://jsonplaceholder.typicode.com/posts')
+      .send(testBody);
+
+    expect(JSON.parse(capturedBody)).toEqual(testBody);
+    expect(res.status).toBe(201);
+    expect(res.text).toBeUndefined;
   });
 
   it('forwards POST body as JSON', async () => {
@@ -103,5 +134,14 @@ describe('Universal Proxy Endpoint', () => {
     expect(res.status).toBe(500);
     expect(res.text).toMatch(/proxy error/i);
     expect(res.text).toMatch(/failfetch/);
+  });
+
+  it('forwards target server errors (unknown proxy error)', async () => {
+    mockedFetch.mockRejectedValue(null);
+
+    const res = await request(app).get('/proxy?url=https://example.com/fail');
+    expect(res.status).toBe(500);
+    expect(res.text).toMatch(/proxy error/i);
+    expect(res.text).toMatch(/Unknown proxy error/);
   });
 });
