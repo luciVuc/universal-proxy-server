@@ -9,7 +9,7 @@
  *   - Sets permissive CORS headers for all responses.
  *   - Handles CORS preflight (OPTIONS) for browser compatibility.
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @author  LV
  * @license MIT
  *
