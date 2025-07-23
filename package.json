@@ -11,7 +11,8 @@
     "format": "prettier --check \"src/**/*.{ts,js,json,md}\"",
     "format:fix": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "start": "node dist/proxy.js",
-    "test": "jest --coverage"
+    "test": "jest --coverage",
+    "prepublish": "pnpm build"
   },
   "keywords": [],
   "author": "LV",
