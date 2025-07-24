@@ -1,6 +1,6 @@
 {
   "name": "universal-proxy-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Universal HTTP proxy server with CORS support",
   "main": "dist/index.js",
   "bin": {
@@ -9,6 +9,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "ts-node-dev src/index.ts",
+    "cli:dev": "npx ts-node src/cli.ts",
+    "cli": "pnpm build && node dist/cli.js",
     "lint": "eslint \"src/**/*.{ts,js}\"",
     "lint:fix": "eslint \"src/**/*.{ts,js}\" --fix",
     "format": "prettier --check \"src/**/*.{ts,js,json,md}\"",
@@ -26,7 +28,8 @@
   "dependencies": {
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
-    "node-fetch": "^3.3.2"
+    "node-fetch": "^3.3.2",
+    "yargs": "^18.0.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",
@@ -35,6 +38,7 @@
     "@types/node": "^24.0.15",
     "@types/node-fetch": "^2.6.12",
     "@types/supertest": "^6.0.3",
+    "@types/yargs": "^17.0.33",
     "@typescript-eslint/eslint-plugin": "^8.37.0",
     "@typescript-eslint/parser": "^8.37.0",
     "eslint": ">=7.0.0",

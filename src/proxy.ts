@@ -9,8 +9,8 @@
  *   - Sets permissive CORS headers for all responses.
  *   - Handles CORS preflight (OPTIONS) for browser compatibility.
  *
- * @version 1.0.2
- * @author  LV
+ * @version 1.0.3
+ * @author LV
  * @license MIT
  *
  * @requires dotenv - To load environment variables from .env.
@@ -24,7 +24,9 @@
  *   # Example proxy GET
  *   curl 'http://localhost:8080/proxy?url=https://api.example.com/data'
  *
- * @env PROXY_PORT - (optional) Port number for the proxy server (default: 8080)
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>} Promise resolving when the proxy operation completes
  */
 
 import dotenv from 'dotenv';
